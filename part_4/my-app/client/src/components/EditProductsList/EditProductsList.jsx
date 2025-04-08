@@ -14,6 +14,7 @@ function EditProductList() {
 
   useEffect(() => {
     axios
+      //get the suppliers products in system
       .post("http://localhost:3000/products/get-products-by-supplier", {
         supplier_id: supplierId,
       })
@@ -25,6 +26,7 @@ function EditProductList() {
       });
   }, [products, supplierId]);
 
+  
   const handleAddProduct = async (productData) => {
     try {
       const response = await axios.post("http://localhost:3000/products/add", {

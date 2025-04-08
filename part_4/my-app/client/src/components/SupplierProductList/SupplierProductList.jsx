@@ -7,6 +7,7 @@ function SupplierProductList({ supplierId: supplier_id, onClose, setRefresh }) {
   const [quantities, setQuantities] = useState({});
 
   useEffect(() => {
+    //get the product of specific supplier
     axios
       .post("http://localhost:3000/products/get-products-by-supplier", {
         supplier_id: supplier_id,
@@ -20,6 +21,7 @@ function SupplierProductList({ supplierId: supplier_id, onClose, setRefresh }) {
   }, [supplier_id]);
 
   const handleQuantityChange = (productName, quantity) => {
+    //an object of product name and quantity pares
     setQuantities({
       ...quantities,
       [productName]: quantity,
@@ -27,11 +29,13 @@ function SupplierProductList({ supplierId: supplier_id, onClose, setRefresh }) {
   };
 
   const makeOrder = async () => {
+    //product list to order
     const productsList = products.map((product) => ({
       product_id: product.id,
       quantity: quantities[product.product_name] || 0, 
     }));
 
+    //more detailes about the order
     const orderData = {
       supplier_id,
       products_list: productsList,
@@ -40,6 +44,7 @@ function SupplierProductList({ supplierId: supplier_id, onClose, setRefresh }) {
     };
 
     try {
+      //adding order
       const response = await axios.post(
         "http://localhost:3000/order/add",
         orderData,
@@ -47,8 +52,8 @@ function SupplierProductList({ supplierId: supplier_id, onClose, setRefresh }) {
 
       if (response.status === 201) {
         console.log("Order placed successfully:", response.data);
+        //for making the seperate elemnt of ther orders refreshed to see the new order
         setRefresh((prev) => !prev);
-
         onClose();
       }
     } catch (error) {

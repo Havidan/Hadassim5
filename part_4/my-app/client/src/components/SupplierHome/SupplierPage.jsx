@@ -4,20 +4,23 @@ import styles from "./SupplierHome.module.css";
 import { useNavigate } from "react-router-dom"; 
 
 function SupplierPage() {
-  console.log("SupplierPage is loaded");
 
   const navigate = useNavigate(); 
 
+  //for save the datails after rendering
   const supplierId = localStorage.getItem("userId");
   const supplierUsername = localStorage.getItem("username");
 
+  //clear the lockal storage
   const handleLogout = () => {
     localStorage.removeItem("userType");
     localStorage.removeItem("username");
     localStorage.removeItem("supplierId");
+    //come back to login form
     navigate("/");
   };
 
+  //if the supplier is registered he can continue to add available products
   const handleEditProducts = () => {
     navigate("/EditProducts"); 
   };

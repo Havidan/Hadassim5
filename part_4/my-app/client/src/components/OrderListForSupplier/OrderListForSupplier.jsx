@@ -10,6 +10,7 @@ function OrderListForSupplier({ supplierId }) {
 
   useEffect(() => {
     axios
+    //get the supplier orders
       .post("http://localhost:3000/order/by-supplier", {
         supplier_id: supplierId,
       })
@@ -17,7 +18,8 @@ function OrderListForSupplier({ supplierId }) {
       .catch((err) => console.error("Failed to fetch orders", err));
   }, [supplierId]);
 
-  const toggleOrder = (orderId) => {
+  //when clicking on an order see the details
+  const orderDetails = (orderId) => {
     setExpandedOrders((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(orderId)) {
@@ -30,6 +32,8 @@ function OrderListForSupplier({ supplierId }) {
   };
 
   const isExpanded = (orderId) => expandedOrders.has(orderId);
+
+  //to nake the order's status to be "in proccess"
   const handleOrderArrivalConfirmation = async (orderId) => {
     try {
       const res = await axios.put(
@@ -39,18 +43,20 @@ function OrderListForSupplier({ supplierId }) {
         },
       );
 
+      //for refreshing the orders' list
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.order_id === orderId ? { ...order, status: "בתהליך" } : order,
         ),
       );
 
-      console.log(`✅ Order ${orderId} status updated:`, res.data);
+      console.log(`Order ${orderId} status updated:`, res.data);
     } catch (err) {
-      console.error("❌ Failed to update order status:", err);
+      console.error("Failed to update order status:", err);
     }
   };
 
+  //to move between the orders in history or in proccess
   const displayCompleteOrders = async () => {
     setDisplayHistory((prev) => !prev);
   };
@@ -81,7 +87,7 @@ function OrderListForSupplier({ supplierId }) {
             <div key={order.order_id} className={styles.orderRow}>
               <div
                 className={styles.orderHeader}
-                onClick={() => toggleOrder(order.order_id)}
+                onClick={() => orderDetails(order.order_id)}
               >
                 <span className={styles.chevron}>
                   {isExpanded(order.order_id) ? (

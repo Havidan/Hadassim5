@@ -6,6 +6,7 @@ function AddProductModal({ onCancel, onAdd }) {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
 
+  //when click to add a product
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -14,6 +15,7 @@ function AddProductModal({ onCancel, onAdd }) {
       return;
     }
 
+    //product details
     const productData = {
       product_name: productName,
       unit_price: parseFloat(price),

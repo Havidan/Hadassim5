@@ -9,6 +9,8 @@ function OrderListForOwner({ refresh }) {
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
+    
+    //get all orders
     axios
       .get("http://localhost:3000/order/all")
       .then((res) => {
@@ -17,6 +19,7 @@ function OrderListForOwner({ refresh }) {
       .catch((err) => console.error("Failed to fetch orders", err));
   }, [refresh]);
 
+  //when clicking on an order see the details
   const toggleOrder = (orderId) => {
     setExpandedOrders((prev) => {
       const newSet = new Set(prev);
@@ -31,6 +34,7 @@ function OrderListForOwner({ refresh }) {
 
   const isExpanded = (orderId) => expandedOrders.has(orderId);
 
+  //to nake the order's status to be "complete"
   const handleOrderArrivalConfirmation = async (orderId) => {
     try {
       const res = await axios.put(
@@ -40,6 +44,7 @@ function OrderListForOwner({ refresh }) {
         },
       );
 
+      //for refreshing the orders' list
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.order_id === orderId ? { ...order, status: "הושלמה" } : order,
@@ -52,6 +57,7 @@ function OrderListForOwner({ refresh }) {
     }
   };
 
+  //to move between the orders in history or in proccess
   const displayCompleteOrders = async () => {
     setDisplayHistory((prev) => !prev);
   };

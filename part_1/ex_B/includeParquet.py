@@ -24,9 +24,7 @@ def process_data_frame(df, file_name, result_queue, thread_finishes):
     for index, row in df.iterrows():
         processed_count += 1
         date_value = row.iloc[0]
-        print(f"Parquet - Date value: {date_value}, Type: {type(date_value)}")
         date_str = str(date_value).strip()
-        print(f"Parquet - Date string (stripped): {date_str}")
         value_from_row = row.iloc[1]
 
         if value_from_row is not None:
@@ -68,58 +66,69 @@ def process_data_frame(df, file_name, result_queue, thread_finishes):
     result_queue.put(results)
     thread_finishes.set()
 
-def process_daily_csv_file(file, file_name, result_queue, thread_finishes):
+def process_daily_csv_file(file_path, file_name, result_queue, thread_finishes):
     print(f"Thread started for CSV file: {file_name}")
     check_duplicate_set = set()
     average_per_hour = {}
-    csv_reader = csv.reader(file)
     processed_count = 0
 
-    for row in csv_reader:
-        processed_count += 1
-        if not row:
-            continue
-        date_str = row[0].strip()
-        print(f"CSV - Date string (stripped): {date_str}")
+    try:
+        with open(file_path, mode='r', encoding='utf-8-sig') as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader) # Skip the header row
+            for row in csv_reader:
+                processed_count += 1
+                if not row or len(row) < 2:
+                    continue
+                date_str = row[0].strip()
+                value_str = row[1].strip().lower()
 
-        if len(row) < 2 or not row[1].strip() or row[1].strip().lower() in ["not_a_number", "nan"]:
-            continue
+                if not value_str or value_str in ["not_a_number", "nan"]:
+                    continue
 
-        try:
-            date_obj = datetime.strptime(date_str, "%d/%m/%Y %H:%M")
-            date_part = date_obj.strftime("%d-%m-%Y")
-            hour = date_obj.strftime("%H")
-        except ValueError:
-            print(f"Warning (CSV - {file_name}): Invalid date format - {date_str}")
-            continue
+                try:
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S" if ".parquet_part.csv" in file_name else "%d/%m/%Y %H:%M")
+                    date_part = date_obj.strftime("%d-%m-%Y")
+                    hour = date_obj.strftime("%H")
+                except ValueError as e:
+                    print(f"Warning (CSV - {file_name}): Invalid date format - {date_str} - {e}")
+                    continue
 
-        if date_str in check_duplicate_set:
-            continue
-        check_duplicate_set.add(date_str)
+                if date_str in check_duplicate_set:
+                    continue
+                check_duplicate_set.add(date_str)
 
-        try:
-            value = float(row[1])
-        except ValueError:
-            print(f"Warning (CSV - {file_name}): Invalid value format - {row[1]} at {date_str}")
-            continue
+                try:
+                    value = float(row[1])
+                except ValueError:
+                    print(f"Warning (CSV - {file_name}): Invalid value format - {row[1]} at {date_str}")
+                    continue
 
-        if hour not in average_per_hour:
-            average_per_hour[hour] = (value, 1)
-        else:
-            sum_values, count = average_per_hour[hour]
-            average_per_hour[hour] = (sum_values + value, count + 1)
+                if hour not in average_per_hour:
+                    average_per_hour[hour] = (value, 1)
+                else:
+                    sum_values, count = average_per_hour[hour]
+                    average_per_hour[hour] = (sum_values + value, count + 1)
+    except FileNotFoundError:
+        print(f"Error: Could not open file {file_path}")
+        result_queue.put([]) # שלח רשימה ריקה כדי לא לפגוע בתוצאות
 
-        results = []
-        for hour, sum_tuple in average_per_hour.items():
+    results = []
+    for hour, sum_tuple in average_per_hour.items():
+        if sum_tuple[1] > 0:
             avg_value = sum_tuple[0] / sum_tuple[1]
             formatted_time = f"{hour}:00:00"
             results.append([f"{date_part} {formatted_time}", f"{avg_value:.2f}"])
 
-        file.close()
-        os.remove(f"C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\{file_name}")
-        print(f"Thread finished for CSV file: {file_name}. Processed {processed_count} rows, found {len(results)} average values.")
-        result_queue.put(results)
-        thread_finishes.set()
+    print(f"Thread finished for CSV file: {file_name}. Processed {processed_count} rows, found {len(results)} average values.")
+    result_queue.put(results)
+    thread_finishes.set()
+    if ".parquet_part.csv" in file_name:
+        try:
+            os.remove(file_path)
+            print(f"Removed temporary file: {file_path}")
+        except OSError as e:
+            print(f"Error removing temporary file {file_path}: {e}")
 
 def seperate_by_date(file_path):
     print(f"Starting seperate_by_date for: {file_path}")
@@ -137,52 +146,47 @@ def seperate_by_date(file_path):
                     continue
                 date_str = row[0].strip()
                 date_info = date_validation(date_str)
-                print(f"CSV - Date string: {date_str}, Date info: {date_info}")
                 if date_info:
                     date_part, time_part = date_info
-                    if date_part not in files_by_date:
-                        files_by_date[date_part] = open(f'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\{date_part}.csv', mode='+a', encoding='utf-8-sig' ,newline='')
-                    writer = csv.writer(files_by_date[date_part])
-                    row.append(time_part)
-                    writer.writerow(row)
+                    file_path_daily = f'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\{date_part}.csv'
+                    with open(file_path_daily, mode='a', encoding='utf-8-sig' ,newline='') as daily_file:
+                        writer = csv.writer(daily_file)
+                        writer.writerow(row + [time_part])
+                    files_by_date[date_part] = file_path_daily
             print(f"Processed {row_count} rows from CSV for separation.")
     elif file_extension == '.parquet':
         df = pd.read_parquet(file_path)
         print(f"Read {len(df)} rows from Parquet file for separation.")
-        unique_dates = set()
         for index, row in df.iterrows():
-            if len(row) < 1:
+            if len(row) < 2:
                 continue
             date_value = row.iloc[0]
+            value = row.iloc[1]
             date_str = str(date_value).strip()
             date_info = date_validation(date_str)
             if date_info:
                 date_part, time_part = date_info
-                unique_dates.add(date_part)
-                if date_part not in files_by_date:
-                    files_by_date[date_part] = []
-                files_by_date[date_part].append(row.tolist() + [time_part])
-        print(f"Found {len(unique_dates)} unique dates.")
-        print(f"files_by_date: {files_by_date}")
-        for date_part, rows in files_by_date.items():
-            temp_df = pd.DataFrame(rows)
-            files_by_date[date_part] = temp_df
-            print(f"Created temporary DataFrame for date: {date_part} with {len(temp_df)} rows.")
+                file_path_daily = f'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\{date_part}.parquet_part.csv'
+                with open(file_path_daily, mode='a', encoding='utf-8-sig' ,newline='') as daily_file:
+                    writer = csv.writer(daily_file)
+                    if os.stat(file_path_daily).st_size == 0:
+                        writer.writerow(["date", "value"]) # כותרות רק אם הקובץ חדש
+                    writer.writerow([f"{date_str}", f"{value}"])
+                files_by_date[date_part] = file_path_daily # שמור את נתיב הקובץ
+
+        print(f"Separated Parquet file into daily CSV files.")
 
     print("Starting thread creation...")
     result_queue = Queue()
     threads = []
     thread_count = 0
 
-    for file_name, data in files_by_date.items():
+    for file_path_to_process in files_by_date.values():
         thread_finishes = threading.Event()
         thread_count += 1
+        file_name = os.path.basename(file_path_to_process)
         print(f"Creating thread {thread_count} for: {file_name}")
-        if file_extension == '.csv':
-            data.seek(0)
-            thread = _thread.start_new_thread(process_daily_csv_file, (data, f"{file_name}.csv", result_queue, thread_finishes))
-        elif file_extension == '.parquet':
-            thread = _thread.start_new_thread(process_data_frame, (data, f"{file_name}.parquet_processed", result_queue, thread_finishes))
+        thread = _thread.start_new_thread(process_daily_csv_file, (file_path_to_process, file_name, result_queue, thread_finishes))
         threads.append(thread_finishes)
 
     print(f"Created {len(threads)} threads.")
@@ -203,8 +207,8 @@ def seperate_by_date(file_path):
                 write_count += 1
         print(f"Finished writing {write_count} rows to final_file.csv")
 
-#file_path = 'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\time_series.csv'
-#seperate_by_date(file_path)
+file_path = 'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\time_series.csv'
+seperate_by_date(file_path)
 
-file_path_parquet = 'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\time_series.parquet' # Example parquet file path
-seperate_by_date(file_path_parquet)
+#file_path_parquet = 'C:\\Users\\This_user\\Desktop\\לימודים\\Hadasim\\part_1\\ex_B\\time_series.parquet' # Example parquet file path
+#seperate_by_date(file_path_parquet)

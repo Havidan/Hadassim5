@@ -6,6 +6,7 @@ import OrderListForOwner from "../OrderListForOwner/OrderListForOwner";
 
 function StoreOwnerPage() {
   const navigate = useNavigate(); 
+  //send the refresh state to the orders element for updating after new order is coming
   const [refresh, setRefresh] = useState(false);
   const suppliersListRef = useRef(null);
 
@@ -14,6 +15,7 @@ function StoreOwnerPage() {
     navigate("/");
   };
 
+  //when clicking on add order the page will scroll to the suppliers part
   const scrollToSuppliers = () => {
     suppliersListRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -26,7 +28,7 @@ function StoreOwnerPage() {
       </button>
       <button onClick={scrollToSuppliers} className={styles.addOrderButton}>
         הוספת הזמנה חדשה
-      </button>{" "}
+      </button>
       <OrderListForOwner refresh={refresh} />
       <div className={styles.container} ref={suppliersListRef}>
         <SuppliersList setRefresh={setRefresh} />
